@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DNDMobileMaui.MainPage"
+             BackgroundColor="White">
+  <ScrollView>
+    <VerticalStackLayout Spacing="20" Padding="24">
+      <Frame BackgroundColor="{StaticResource PrimaryLight}"
+             CornerRadius="24"
+             Padding="24">
+        <VerticalStackLayout Spacing="8">
+          <Label Text="Welcome!" Style="{StaticResource TitleLabel}" />
+          <Label Text="We recreated the Expo starter screen in MAUI." Style="{StaticResource BodyLabel}" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <VerticalStackLayout Spacing="12">
+        <Label Text="Step 1: Try it" Style="{StaticResource SubtitleLabel}" />
+        <Label Text="Edit MainPage.xaml to see changes and reload the app." Style="{StaticResource BodyLabel}" />
+      </VerticalStackLayout>
+
+      <VerticalStackLayout Spacing="12">
+        <Label Text="Step 2: Explore" Style="{StaticResource SubtitleLabel}" />
+        <Label Text="Add pages, navigation, and services in AppShell and MauiProgram." Style="{StaticResource BodyLabel}" />
+      </VerticalStackLayout>
+
+      <VerticalStackLayout Spacing="12">
+        <Label Text="Step 3: Get a fresh start" Style="{StaticResource SubtitleLabel}" />
+        <Label Text="Once you're ready, extend this layout with your own content." Style="{StaticResource BodyLabel}" />
+      </VerticalStackLayout>
+
+      <Frame BackgroundColor="{StaticResource PrimaryDark}" CornerRadius="18" Padding="16">
+        <Label Text="Next: wire up data, icons, and platform-specific polish." TextColor="White" />
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DNDMobileMaui.App">
+  <Application.Resources>
+    <ResourceDictionary>
+      <Color x:Key="PrimaryLight">#A1CEDC</Color>
+      <Color x:Key="PrimaryDark">#1D3D47</Color>
+      <Color x:Key="TextDark">#1C1C1E</Color>
+      <Color x:Key="TextMuted">#5A5A5F</Color>
+
+      <Style x:Key="TitleLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextDark}" />
+      </Style>
+
+      <Style x:Key="SubtitleLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextDark}" />
+      </Style>
+
+      <Style x:Key="BodyLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{StaticResource TextMuted}" />
+      </Style>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>
