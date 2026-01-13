@@ -43,10 +43,12 @@ const toHex = (bytes: Uint8Array) =>
     .join('');
 
 const hashPassword = async (password: string, salt: string) =>
-  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${password}${salt}`);
+  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${password}${salt}`, {
+    encoding: Crypto.CryptoEncoding.HEX,
+  });
 
 const generateSalt = async () => {
-  const bytes = await Crypto.getRandomBytesAsync(16);
+  const bytes = await Crypto.getRandomBytesAsync(32);
   return toHex(bytes);
 };
 
