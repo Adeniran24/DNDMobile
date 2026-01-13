@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import * as Crypto from 'expo-crypto';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:5188';
 
