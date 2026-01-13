@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +11,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as Crypto from 'expo-crypto';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:5000';
 
 const FORM_COPY = {
   login: {
@@ -28,9 +32,151 @@ const FORM_COPY = {
 
 type FormMode = keyof typeof FORM_COPY;
 
+type StatusMessage = {
+  type: 'error' | 'success';
+  text: string;
+} | null;
+
+const toHex = (bytes: Uint8Array) =>
+  Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+const hashPassword = async (password: string, salt: string) =>
+  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${password}${salt}`);
+
+const generateSalt = async () => {
+  const bytes = await Crypto.getRandomBytesAsync(16);
+  return toHex(bytes);
+};
+
+const buildUrl = (path: string, params?: Record<string, string>) => {
+  const url = new URL(path, API_BASE_URL);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+  return url.toString();
+};
+
 export default function HomeScreen() {
   const [mode, setMode] = useState<FormMode>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [heroName, setHeroName] = useState('');
+  const [status, setStatus] = useState<StatusMessage>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [token, setToken] = useState('');
+
   const copy = FORM_COPY[mode];
+  const sanitizedEmail = useMemo(() => email.trim(), [email]);
+
+  const resetStatus = () => setStatus(null);
+
+  const handleRegister = async () => {
+    if (!sanitizedEmail || !password || !heroName.trim()) {
+      setStatus({ type: 'error', text: 'Minden mező kitöltése kötelező.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    resetStatus();
+
+    try {
+      const salt = await generateSalt();
+      const clientHash = await hashPassword(password, salt);
+      const registerResponse = await fetch(
+        buildUrl('/api/auth/register', {
+          email: sanitizedEmail,
+          username: heroName.trim(),
+          password: clientHash,
+        }),
+        { method: 'POST' }
+      );
+
+      if (!registerResponse.ok) {
+        const errorText = await registerResponse.text();
+        throw new Error(errorText || 'Sikertelen regisztráció.');
+      }
+
+      const saltResponse = await fetch(buildUrl('/api/auth/salt-send'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sanitizedEmail, salt }),
+      });
+
+      if (!saltResponse.ok) {
+        const errorText = await saltResponse.text();
+        throw new Error(errorText || 'Nem sikerült a só mentése.');
+      }
+
+      setStatus({ type: 'success', text: 'Sikeres regisztráció! Most jelentkezz be.' });
+      setMode('login');
+      setPassword('');
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Ismeretlen hiba történt.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!sanitizedEmail || !password) {
+      setStatus({ type: 'error', text: 'Email és jelszó megadása kötelező.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    resetStatus();
+
+    try {
+      const saltResponse = await fetch(buildUrl('/api/auth/salt', { email: sanitizedEmail }));
+      if (!saltResponse.ok) {
+        const errorText = await saltResponse.text();
+        throw new Error(errorText || 'Nem található a felhasználó.');
+      }
+
+      const saltPayload = (await saltResponse.json()) as { salt: string };
+      const clientHash = await hashPassword(password, saltPayload.salt);
+      const loginResponse = await fetch(
+        buildUrl('/api/auth/login', { email: sanitizedEmail, password: clientHash }),
+        { method: 'POST' }
+      );
+
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        throw new Error(errorText || 'Hibás bejelentkezés.');
+      }
+
+      const payload = (await loginResponse.json()) as { token: string };
+      setToken(payload.token ?? '');
+      setStatus({ type: 'success', text: 'Sikeres bejelentkezés!' });
+      setPassword('');
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Ismeretlen hiba történt.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (mode === 'login') {
+      void handleLogin();
+    } else {
+      void handleRegister();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -48,7 +194,10 @@ export default function HomeScreen() {
             {(['login', 'register'] as const).map((option) => (
               <Pressable
                 key={option}
-                onPress={() => setMode(option)}
+                onPress={() => {
+                  resetStatus();
+                  setMode(option);
+                }}
                 style={[styles.toggleButton, mode === option && styles.toggleButtonActive]}>
                 <Text style={[styles.toggleText, mode === option && styles.toggleTextActive]}>
                   {option === 'login' ? 'Bejelentkezés' : 'Regisztráció'}
@@ -65,6 +214,10 @@ export default function HomeScreen() {
               style={styles.input}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
+              editable={!isSubmitting}
             />
 
             <Text style={styles.label}>Jelszó</Text>
@@ -73,6 +226,9 @@ export default function HomeScreen() {
               placeholderTextColor="#c4a88a"
               style={styles.input}
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              editable={!isSubmitting}
             />
 
             {mode === 'register' ? (
@@ -82,12 +238,33 @@ export default function HomeScreen() {
                   placeholder="Thorn, az őrző"
                   placeholderTextColor="#c4a88a"
                   style={styles.input}
+                  value={heroName}
+                  onChangeText={setHeroName}
+                  editable={!isSubmitting}
                 />
               </>
             ) : null}
 
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>{copy.action}</Text>
+            {status ? (
+              <Text
+                style={[
+                  styles.statusText,
+                  status.type === 'error' ? styles.statusError : styles.statusSuccess,
+                ]}>
+                {status.text}
+              </Text>
+            ) : null}
+
+            {token ? <Text style={styles.tokenText}>JWT: {token}</Text> : null}
+
+            <Pressable
+              style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
+              onPress={handleSubmit}>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fef5eb" />
+              ) : (
+                <Text style={styles.primaryButtonText}>{copy.action}</Text>
+              )}
             </Pressable>
 
             <Text style={styles.footnote}>{copy.footnote}</Text>
@@ -187,12 +364,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#4a2f1d',
   },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  statusError: {
+    color: '#f2a07a',
+  },
+  statusSuccess: {
+    color: '#f7d9b8',
+  },
+  tokenText: {
+    fontSize: 10,
+    color: '#c4a88a',
+    textAlign: 'center',
+  },
   primaryButton: {
     backgroundColor: '#c0682a',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 6,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: '#fef5eb',
