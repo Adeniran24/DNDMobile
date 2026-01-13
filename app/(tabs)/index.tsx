@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import * as Crypto from 'expo-crypto';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:5000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:5188';
 
 const FORM_COPY = {
   login: {
@@ -62,6 +62,22 @@ const buildUrl = (path: string, params?: Record<string, string>) => {
   return url.toString();
 };
 
+const getReadableError = (message: string) => {
+  if (message.includes('Unable to connect to any of the specified MySQL hosts')) {
+    return 'Nem érhető el az adatbázis. Ellenőrizd, hogy a backend fut és a DB elérhető.';
+  }
+
+  if (message.includes('Email already registered')) {
+    return 'Ez az email cím már regisztrálva van.';
+  }
+
+  if (message.includes('Invalid credentials')) {
+    return 'Hibás email vagy jelszó.';
+  }
+
+  return message;
+};
+
 export default function HomeScreen() {
   const [mode, setMode] = useState<FormMode>('login');
   const [email, setEmail] = useState('');
@@ -99,7 +115,7 @@ export default function HomeScreen() {
 
       if (!registerResponse.ok) {
         const errorText = await registerResponse.text();
-        throw new Error(errorText || 'Sikertelen regisztráció.');
+        throw new Error(getReadableError(errorText || 'Sikertelen regisztráció.'));
       }
 
       const saltResponse = await fetch(buildUrl('/api/auth/salt-send'), {
@@ -110,7 +126,7 @@ export default function HomeScreen() {
 
       if (!saltResponse.ok) {
         const errorText = await saltResponse.text();
-        throw new Error(errorText || 'Nem sikerült a só mentése.');
+        throw new Error(getReadableError(errorText || 'Nem sikerült a só mentése.'));
       }
 
       setStatus({ type: 'success', text: 'Sikeres regisztráció! Most jelentkezz be.' });
@@ -139,7 +155,7 @@ export default function HomeScreen() {
       const saltResponse = await fetch(buildUrl('/api/auth/salt', { email: sanitizedEmail }));
       if (!saltResponse.ok) {
         const errorText = await saltResponse.text();
-        throw new Error(errorText || 'Nem található a felhasználó.');
+        throw new Error(getReadableError(errorText || 'Nem található a felhasználó.'));
       }
 
       const saltPayload = (await saltResponse.json()) as { salt: string };
@@ -151,7 +167,7 @@ export default function HomeScreen() {
 
       if (!loginResponse.ok) {
         const errorText = await loginResponse.text();
-        throw new Error(errorText || 'Hibás bejelentkezés.');
+        throw new Error(getReadableError(errorText || 'Hibás bejelentkezés.'));
       }
 
       const payload = (await loginResponse.json()) as { token: string };
